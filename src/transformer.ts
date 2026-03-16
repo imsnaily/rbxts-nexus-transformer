@@ -58,16 +58,6 @@ export default function transformer(program: ts.Program): ts.TransformerFactory<
     }
 }
 
-function visitSourceFile(checker: ts.TypeChecker, context: ts.TransformationContext): ts.Visitor {
-    return (node: ts.Node): ts.VisitResult<ts.Node> => {
-        if (ts.isClassDeclaration(node)) {
-            return visitClassDeclaration(checker, context, node);
-        }
-
-        return ts.visitEachChild(node, visitSourceFile(checker, context), context);
-    }
-}
-
 function visitClassDeclaration(checker: ts.TypeChecker, context: ts.TransformationContext, classNode: ts.ClassDeclaration): ts.ClassDeclaration {
     const updatedMembers = classNode.members.map((member) => {
         if (!ts.isMethodDeclaration(member)) return member;
@@ -119,38 +109,28 @@ function injectMetadata(checker: ts.TypeChecker, context: ts.TransformationConte
     );
 }
 
-function buildMetadataCall(method: ts.MethodDeclaration, eventClassName: string): ts.Statement {
+function buildMetadataCall(
+    method: ts.MethodDeclaration,
+    eventClassName: string,
+): ts.Statement {
     const methodName = (method.name as ts.Identifier).text;
 
     return ts.factory.createExpressionStatement(
         ts.factory.createCallExpression(
-            ts.factory.createParenthesizedExpression(
-                ts.factory.createArrowFunction(
-                    undefined,
-                    undefined,
-                    [],
-                    undefined,
-                    ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                    ts.factory.createCallExpression(
-                        ts.factory.createPropertyAccessExpression(
-                            ts.factory.createIdentifier(NEXUS_METADATA_CALL),
-                            ts.factory.createIdentifier("define"),
-                        ),
-                        undefined,
-                        [
-                            ts.factory.createStringLiteral("paramtypes"),
-                            ts.factory.createArrayLiteralExpression([
-                                ts.factory.createIdentifier(eventClassName),
-                            ]),
-                            ts.factory.createStringLiteral(methodName),
-                        ],
-                    ),
-                ),
+            ts.factory.createPropertyAccessExpression(
+                ts.factory.createIdentifier(NEXUS_METADATA_CALL),
+                ts.factory.createIdentifier("define"),
             ),
             undefined,
-            [],
+            [
+                ts.factory.createStringLiteral("paramtypes"),
+                ts.factory.createArrayLiteralExpression([
+                    ts.factory.createIdentifier(eventClassName),
+                ]),
+                ts.factory.createStringLiteral(methodName),
+            ],
         ),
-    )
+    );
 }
 
 function hasEventHandlerDecorator(method: ts.MethodDeclaration): boolean {
