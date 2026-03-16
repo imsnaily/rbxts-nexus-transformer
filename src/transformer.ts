@@ -94,7 +94,7 @@ function injectMetadata(checker: ts.TypeChecker, context: ts.TransformationConte
     if (eventClassName === undefined) return method;
 
     // Generates: NexusMetadata.define('paramtypes', [EventClassName], target, 'methodName')
-    const metadataStatements = buildMetadataCall(method, eventClassName)
+    const metadataCall = buildMetadataCall(method, eventClassName);
     const originalBody = method.body;
     
     if (originalBody === undefined) {
@@ -102,7 +102,7 @@ function injectMetadata(checker: ts.TypeChecker, context: ts.TransformationConte
     }
 
     const updatedBody = ts.factory.updateBlock(originalBody, [
-        ...metadataStatements,
+        metadataCall,
         ...originalBody.statements
     ]);
 
@@ -119,51 +119,38 @@ function injectMetadata(checker: ts.TypeChecker, context: ts.TransformationConte
     );
 }
 
-function buildMetadataCall(method: ts.MethodDeclaration, eventClassName: string): ts.Statement[] {
-    const methodName = (method.name as ts.Identifier).text
-    const localVar = ts.factory.createVariableStatement(
-        undefined,
-        ts.factory.createVariableDeclarationList([
-            ts.factory.createVariableDeclaration(
-                "_nexusDefine",
-                undefined,
-                undefined,
-                ts.factory.createPropertyAccessExpression(
-                    ts.factory.createIdentifier(NEXUS_METADATA_CALL),
-                    ts.factory.createIdentifier('define')
-                )
-            )
-        ])
-    )
+function buildMetadataCall(method: ts.MethodDeclaration, eventClassName: string): ts.Statement {
+    const methodName = (method.name as ts.Identifier).text;
 
-    return [localVar, ts.factory.createExpressionStatement(
+    return ts.factory.createExpressionStatement(
         ts.factory.createCallExpression(
-            ts.factory.createIdentifier('_nexusDefine'),
+            ts.factory.createParenthesizedExpression(
+                ts.factory.createArrowFunction(
+                    undefined,
+                    undefined,
+                    [],
+                    undefined,
+                    ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                    ts.factory.createCallExpression(
+                        ts.factory.createPropertyAccessExpression(
+                            ts.factory.createIdentifier(NEXUS_METADATA_CALL),
+                            ts.factory.createIdentifier("define"),
+                        ),
+                        undefined,
+                        [
+                            ts.factory.createStringLiteral("paramtypes"),
+                            ts.factory.createArrayLiteralExpression([
+                                ts.factory.createIdentifier(eventClassName),
+                            ]),
+                            ts.factory.createStringLiteral(methodName),
+                        ],
+                    ),
+                ),
+            ),
             undefined,
-            [
-                ts.factory.createStringLiteral('paramtypes'),
-                ts.factory.createArrayLiteralExpression([
-                    ts.factory.createIdentifier(eventClassName)
-                ]),
-                ts.factory.createStringLiteral(methodName)
-            ]
-        )
-    )];
-
-    // return ts.factory.createCallExpression(
-    //     ts.factory.createPropertyAccessExpression(
-    //         ts.factory.createIdentifier(NEXUS_METADATA_CALL),
-    //         ts.factory.createIdentifier("define"),
-    //     ),
-    //     undefined,
-    //     [
-    //         ts.factory.createStringLiteral("paramtypes"),
-    //         ts.factory.createArrayLiteralExpression([
-    //             ts.factory.createIdentifier(eventClassName),
-    //         ]),
-    //         ts.factory.createStringLiteral(methodName),
-    //     ],
-    // )
+            [],
+        ),
+    )
 }
 
 function hasEventHandlerDecorator(method: ts.MethodDeclaration): boolean {
