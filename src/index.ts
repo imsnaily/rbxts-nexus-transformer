@@ -8,7 +8,23 @@ export default function transformer(program: ts.Program): ts.TransformerFactory<
 
     return (context: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
         return (sourceFile: ts.SourceFile): ts.SourceFile => {
-            return ts.visitNode(sourceFile, visitSourceFile(checker, context)) as ts.SourceFile;
+            const visitor = (node: ts.Node): ts.VisitResult<ts.Node> => {
+                if (ts.isClassDeclaration(node)) {
+                    return visitClassDeclaration(checker, context, node);
+                }
+
+                if (
+                    ts.isSourceFile(node) ||
+                    ts.isModuleDeclaration(node) ||
+                    ts.isModuleBlock(node)
+                ) {
+                    return ts.visitEachChild(node, visitor, context);
+                }
+
+                return node;
+            }
+
+            return ts.visitNode(sourceFile, visitor) as ts.SourceFile;
         }
     }
 }
