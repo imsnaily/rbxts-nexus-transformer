@@ -1,13 +1,13 @@
-# @rbxts/nexus-transformer
+# @snailycfx/nexus-transformer
 
-TypeScript compiler transformer for [@rbxts/nexus](https://github.com/imsnaily/nexus-framework).
+TypeScript compiler transformer for [@snailycfx/nexus](https://github.com/imsnaily/nexus-framework).
 
 Automatically injects event parameter metadata at compile time, enabling
 `@EventHandler()` to resolve event types without manual configuration.
 
 ## Installation
 ```bash
-npm install @rbxts/nexus-transformer
+npm install @snailycfx/nexus-transformer
 npx ts-patch install
 ```
 
@@ -18,7 +18,7 @@ Add the transformer to your `tsconfig.json`:
 {
     "compilerOptions": {
         "plugins": [
-            { "transform": "@rbxts/nexus-transformer" }
+            { "transform": "@snailycfx/nexus-transformer" }
         ]
     }
 }

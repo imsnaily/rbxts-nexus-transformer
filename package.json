@@ -1,7 +1,7 @@
 {
-    "name": "@rbxts/nexus-transformer",
+    "name": "@snailycfx/nexus-transformer",
     "version": "1.0.0",
-    "description": "TypeScript transformer for @rbxts/nexus — injects event parameter metadata",
+    "description": "TypeScript transformer for @snailycfx/nexus — injects event parameter metadata",
     "main": "out/index.js",
     "types": "out/index.d.ts",
     "scripts": {
