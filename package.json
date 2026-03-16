@@ -1,6 +1,6 @@
 {
     "name": "@snailycfx/nexus-transformer",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "TypeScript transformer for @snailycfx/nexus — injects event parameter metadata",
     "main": "out/index.js",
     "types": "out/index.d.ts",
