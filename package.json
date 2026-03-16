@@ -27,5 +27,13 @@
     },
     "publishConfig": {
         "access": "public"
-    }
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/imsnaily/rbxts-nexus-transformer"
+    },
+    "bugs": {
+        "url": "https://github.com/imsnaily/rbxts-nexus-transformer/issues"
+    },
+    "homepage": "https://github.com/imsnaily/rbxts-nexus-transformer#readme"
 }
