@@ -59,12 +59,28 @@ export default function transformer(program: ts.Program): ts.TransformerFactory<
 }
 
 function visitClassDeclaration(checker: ts.TypeChecker, context: ts.TransformationContext, classNode: ts.ClassDeclaration): ts.ClassDeclaration {
+    const extraStatements: ts.Statement[] = [];
     const updatedMembers = classNode.members.map((member) => {
         if (!ts.isMethodDeclaration(member)) return member;
         if (!hasEventHandlerDecorator(member)) return member;
 
-        return injectMetadata(checker, context, member);
-    })
+        const firstParam = member.parameters[0];
+        if (firstParam === undefined) return member;
+
+        const eventClassName = resolveParamTypeName(checker, firstParam);
+        if (eventClassName === undefined) return member;
+
+        extraStatements.push(buildMetadataCall(member, eventClassName));
+        return member;
+    });
+
+    if (extraStatements.length === 0) return classNode;
+
+    const metaMembers = extraStatements.map((stmt) =>
+        ts.factory.createClassStaticBlockDeclaration(
+            ts.factory.createBlock([stmt])
+        )
+    );
 
     return ts.factory.updateClassDeclaration(
         classNode,
@@ -72,42 +88,42 @@ function visitClassDeclaration(checker: ts.TypeChecker, context: ts.Transformati
         classNode.name,
         classNode.typeParameters,
         classNode.heritageClauses,
-        updatedMembers
+        [...updatedMembers, ...metaMembers],
     );
 }
 
-function injectMetadata(checker: ts.TypeChecker, context: ts.TransformationContext, method: ts.MethodDeclaration): ts.MethodDeclaration {
-    const firstParam = method.parameters[0];
-    if (firstParam === undefined) return method;
+// function injectMetadata(checker: ts.TypeChecker, context: ts.TransformationContext, method: ts.MethodDeclaration): ts.MethodDeclaration {
+//     const firstParam = method.parameters[0];
+//     if (firstParam === undefined) return method;
 
-    const eventClassName = resolveParamTypeName(checker, firstParam);
-    if (eventClassName === undefined) return method;
+//     const eventClassName = resolveParamTypeName(checker, firstParam);
+//     if (eventClassName === undefined) return method;
 
-    // Generates: NexusMetadata.define('paramtypes', [EventClassName], target, 'methodName')
-    const metadataCall = buildMetadataCall(method, eventClassName);
-    const originalBody = method.body;
+//     // Generates: NexusMetadata.define('paramtypes', [EventClassName], target, 'methodName')
+//     const metadataCall = buildMetadataCall(method, eventClassName);
+//     const originalBody = method.body;
     
-    if (originalBody === undefined) {
-        return method;
-    }
+//     if (originalBody === undefined) {
+//         return method;
+//     }
 
-    const updatedBody = ts.factory.updateBlock(originalBody, [
-        metadataCall,
-        ...originalBody.statements
-    ]);
+//     const updatedBody = ts.factory.updateBlock(originalBody, [
+//         metadataCall,
+//         ...originalBody.statements
+//     ]);
 
-    return ts.factory.updateMethodDeclaration(
-        method,
-        method.modifiers,
-        method.asteriskToken,
-        method.name,
-        method.questionToken,
-        method.typeParameters,
-        method.parameters,
-        method.type,
-        updatedBody,
-    );
-}
+//     return ts.factory.updateMethodDeclaration(
+//         method,
+//         method.modifiers,
+//         method.asteriskToken,
+//         method.name,
+//         method.questionToken,
+//         method.typeParameters,
+//         method.parameters,
+//         method.type,
+//         updatedBody,
+//     );
+// }
 
 function buildMetadataCall(
     method: ts.MethodDeclaration,
