@@ -51,7 +51,7 @@ public onWaveStarted(event: WaveStartedEvent): void {
 
 - `typescript` >= 5.0.0
 - `ts-patch` >= 3.0.0
-- `@rbxts/nexus`
+- `@snailycfx/nexus`
 
 ## License
 
