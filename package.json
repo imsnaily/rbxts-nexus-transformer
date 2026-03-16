@@ -1,0 +1,31 @@
+{
+    "name": "@rbxts/nexus-transformer",
+    "version": "1.0.0",
+    "description": "TypeScript transformer for @rbxts/nexus — injects event parameter metadata",
+    "main": "out/index.js",
+    "types": "out/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc -w",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "roblox",
+        "roblox-ts",
+        "transformer",
+        "nexus"
+    ],
+    "author": "Snaily",
+    "license": "MIT",
+    "dependencies": {
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "latest",
+        "typescript": "^5.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}

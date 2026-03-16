@@ -1,0 +1,129 @@
+import ts from "typescript";
+
+const EVENT_HANDLER_DECORATOR = 'EventHandler';
+const NEXUS_METADATA_CALL = 'NexusMetadata';
+
+export default function transformer(program: ts.Program): ts.TransformerFactory<ts.SourceFile> {
+    const checker = program.getTypeChecker();
+
+    return (context: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
+        return (sourceFile: ts.SourceFile): ts.SourceFile => {
+            return ts.visitNode(sourceFile, visitSourceFile(checker, context)) as ts.SourceFile;
+        }
+    }
+}
+
+function visitSourceFile(checker: ts.TypeChecker, context: ts.TransformationContext): ts.Visitor {
+    return (node: ts.Node): ts.VisitResult<ts.Node> => {
+        if (ts.isClassDeclaration(node)) {
+            return visitClassDeclaration(checker, context, node);
+        }
+
+        return ts.visitEachChild(node, visitSourceFile(checker, context), context);
+    }
+}
+
+function visitClassDeclaration(checker: ts.TypeChecker, context: ts.TransformationContext, classNode: ts.ClassDeclaration): ts.ClassDeclaration {
+    const updatedMembers = classNode.members.map((member) => {
+        if (!ts.isMethodDeclaration(member)) return member;
+        if (!hasEventHandlerDecorator(member)) return member;
+
+        return injectMetadata(checker, context, member);
+    })
+
+    return ts.factory.updateClassDeclaration(
+        classNode,
+        classNode.modifiers,
+        classNode.name,
+        classNode.typeParameters,
+        classNode.heritageClauses,
+        updatedMembers
+    );
+}
+
+function injectMetadata(checker: ts.TypeChecker, context: ts.TransformationContext, method: ts.MethodDeclaration): ts.MethodDeclaration {
+    const firstParam = method.parameters[0];
+    if (firstParam === undefined) return method;
+
+    const eventClassName = resolveParamTypeName(checker, firstParam);
+    if (eventClassName === undefined) return method;
+
+    // Generates: NexusMetadata.define('paramtypes', [EventClassName], target, 'methodName')
+    const metadataCall = buildMetadataCall(method, eventClassName);
+    const originalBody = method.body;
+    
+    if (originalBody === undefined) {
+        return method;
+    }
+
+    const updatedBody = ts.factory.updateBlock(originalBody, [
+        ts.factory.createExpressionStatement(metadataCall),
+        ...originalBody.statements
+    ]);
+
+    return ts.factory.updateMethodDeclaration(
+        method,
+        method.modifiers,
+        method.asteriskToken,
+        method.name,
+        method.questionToken,
+        method.typeParameters,
+        method.parameters,
+        method.type,
+        updatedBody,
+    );
+}
+
+function buildMetadataCall(method: ts.MethodDeclaration, eventClassName: string): ts.CallExpression {
+    const methodName = (method.name as ts.Identifier).text;
+    
+    return ts.factory.createCallExpression(
+        ts.factory.createPropertyAccessExpression(
+            ts.factory.createIdentifier(NEXUS_METADATA_CALL),
+            ts.factory.createIdentifier('define')
+        ),
+        undefined,
+        [
+            ts.factory.createStringLiteral("paramtypes"),
+            ts.factory.createArrayLiteralExpression([
+                ts.factory.createIdentifier(eventClassName),
+            ]),
+            ts.factory.createIdentifier("target"),
+            ts.factory.createStringLiteral(methodName),
+        ]
+    )
+}
+
+function hasEventHandlerDecorator(method: ts.MethodDeclaration): boolean {
+    return (method.modifiers ?? []).some((modifier) => {
+        if (!ts.isDecorator(modifier)) return false;
+
+        const expression = modifier.expression;
+
+        // @EventHandler() - CallExpression
+        if (ts.isCallExpression(expression)) {
+            const callee = expression.expression;
+            return ts.isIdentifier(callee) && callee.text === EVENT_HANDLER_DECORATOR;
+        }
+
+        if (ts.isIdentifier(expression)) {
+            return expression.text === EVENT_HANDLER_DECORATOR;
+        }
+
+        return false;
+    })
+}
+
+function resolveParamTypeName(checker: ts.TypeChecker, param: ts.ParameterDeclaration): string | undefined {
+    const typeNode = param.type;
+    if (typeNode === undefined) return undefined;
+
+    const type = checker.getTypeFromTypeNode(typeNode);
+    const symbol = type.getSymbol();
+
+    if (symbol === undefined) {
+        return undefined;
+    };
+
+    return symbol.getName();
+}
